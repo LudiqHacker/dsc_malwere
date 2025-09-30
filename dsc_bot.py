@@ -94,7 +94,7 @@ async def list(ctx):
         os_full = distro_name
     elif os_find == "Windows":
         win_ver = platform.release()
-        os_full = win_ver
+        os_full = f"Windows {win_ver}"
     else:
         pass
     os_find = os_full
