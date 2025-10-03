@@ -112,7 +112,6 @@ async def list(ctx):
         os_full = f"Windows {win_ver}"
     else:
         pass
-    os_full = os_find
     user = getpass.getuser()
     mac_addr = get_mac_address()
     ip = requests.get("https://api.ipify.org").text
